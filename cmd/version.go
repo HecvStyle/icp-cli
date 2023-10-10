@@ -12,25 +12,13 @@ import (
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "version info",
-	Long:  `show version info`,
+	Short: "显示版本信息",
+	Long:  `显示版本类型`,
 	Run: func(cmd *cobra.Command, args []string) {
-		println(cmd.Flag("verbose").Shorthand)
-
-		fmt.Println("1.0.0")
+		fmt.Println("当前使用的版本为: 1.0.0")
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// versionCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// versionCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

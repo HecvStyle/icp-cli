@@ -16,8 +16,6 @@ import (
 	"time"
 )
 
-var IcpNotForRecord = errors.New("域名未备案")
-
 type IcpClient struct {
 	core   *http.Client
 	token  string
@@ -42,8 +40,6 @@ func (i *IcpClient) GetCookies() error {
 	if err != nil {
 		return err
 	}
-	fmt.Print(res.Cookies())
-
 	for _, cookie := range res.Cookies() {
 		if cookie.Name == "__jsluid_s" {
 			i.cookie = cookie.Value
@@ -299,39 +295,41 @@ type DomainInfoRet struct {
 	Code   int    `json:"code"`
 	Msg    string `json:"msg"`
 	Params struct {
-		EndRow          int  `json:"endRow"`
-		FirstPage       int  `json:"firstPage"`
-		HasNextPage     bool `json:"hasNextPage"`
-		HasPreviousPage bool `json:"hasPreviousPage"`
-		IsFirstPage     bool `json:"isFirstPage"`
-		IsLastPage      bool `json:"isLastPage"`
-		LastPage        int  `json:"lastPage"`
-		List            []struct {
-			ContentTypeName  string `json:"contentTypeName"`
-			Domain           string `json:"domain"`
-			DomainId         int    `json:"domainId"`
-			LeaderName       string `json:"leaderName"`
-			LimitAccess      string `json:"limitAccess"`
-			MainId           int    `json:"mainId"`
-			MainLicence      string `json:"mainLicence"`
-			NatureName       string `json:"natureName"`
-			ServiceId        int    `json:"serviceId"`
-			ServiceLicence   string `json:"serviceLicence"`
-			UnitName         string `json:"unitName"`
-			UpdateRecordTime string `json:"updateRecordTime"`
-		} `json:"list"`
-		NavigatePages    int   `json:"navigatePages"`
-		NavigatepageNums []int `json:"navigatepageNums"`
-		NextPage         int   `json:"nextPage"`
-		PageNum          int   `json:"pageNum"`
-		PageSize         int   `json:"pageSize"`
-		Pages            int   `json:"pages"`
-		PrePage          int   `json:"prePage"`
-		Size             int   `json:"size"`
-		StartRow         int   `json:"startRow"`
-		Total            int   `json:"total"`
+		EndRow           int        `json:"endRow"`
+		FirstPage        int        `json:"firstPage"`
+		HasNextPage      bool       `json:"hasNextPage"`
+		HasPreviousPage  bool       `json:"hasPreviousPage"`
+		IsFirstPage      bool       `json:"isFirstPage"`
+		IsLastPage       bool       `json:"isLastPage"`
+		LastPage         int        `json:"lastPage"`
+		List             []UnitInfo `json:"list"`
+		NavigatePages    int        `json:"navigatePages"`
+		NavigatepageNums []int      `json:"navigatepageNums"`
+		NextPage         int        `json:"nextPage"`
+		PageNum          int        `json:"pageNum"`
+		PageSize         int        `json:"pageSize"`
+		Pages            int        `json:"pages"`
+		PrePage          int        `json:"prePage"`
+		Size             int        `json:"size"`
+		StartRow         int        `json:"startRow"`
+		Total            int        `json:"total"`
 	} `json:"params"`
 	Success bool `json:"success"`
+}
+
+type UnitInfo struct {
+	ContentTypeName  string `json:"contentTypeName"`
+	Domain           string `json:"domain"`
+	DomainId         int    `json:"domainId"`
+	LeaderName       string `json:"leaderName"`
+	LimitAccess      string `json:"limitAccess"`
+	MainId           int    `json:"mainId"`
+	MainLicence      string `json:"mainLicence"`
+	NatureName       string `json:"natureName"`
+	ServiceId        int    `json:"serviceId"`
+	ServiceLicence   string `json:"serviceLicence"`
+	UnitName         string `json:"unitName"`
+	UpdateRecordTime string `json:"updateRecordTime"`
 }
 
 func RandAgent() string {

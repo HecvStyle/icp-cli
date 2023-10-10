@@ -3,6 +3,7 @@ package checker
 import (
 	"encoding/json"
 	"fmt"
+	"go-icp-checker/utils"
 	"testing"
 )
 
@@ -35,11 +36,15 @@ func TestIcpClient_GetCookies(t *testing.T) {
 	}
 	t.Logf("sign:%s", sign)
 
-	domainInfo, err := client.GetIcpInfo("51cto.com.cn")
+	//北京无忧创想信息技术有限公司
+	//51cto.com.cn
+	//京ICP备09067568号-5
+	//京ICP备09067568号
+	domainInfo, err := client.GetIcpInfo("furywizz.xyz")
 	if err != nil {
 		t.Fatal()
 	}
-	fmt.Print(domainInfo)
+	fmt.Print(utils.Prettify(domainInfo))
 
 }
 
@@ -80,8 +85,6 @@ func Test_match(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer bg.Close()
-
 	loc := Match(bg, block, alpha)
-
 	t.Logf(`{"distance":%d}`, loc.X)
 }
