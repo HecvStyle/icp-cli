@@ -23,6 +23,7 @@ type IcpClient struct {
 	token  string
 	agent  string
 	cookie string
+	sign   string
 }
 
 func NewIcpClient() *IcpClient {
@@ -52,35 +53,6 @@ func (i *IcpClient) GetCookies() error {
 	return errors.New("无法获取到cookie")
 }
 
-//	func (i *Icp) Query(domain string) (*request.DomainInfo, error) {
-//		i.getUserAgent()
-//		if err := i.auth(); err != nil {
-//			return nil, errors.New("获取授权失败:" + err.Error())
-//		}
-//		return i.query(domain)
-//	}
-//
-//	func (i *Icp) query(domain string) (*request.DomainInfo, error) {
-//		queryRequest, _ := json.Marshal(&request.QueryRequest{
-//			UnitName: domain,
-//		})
-//
-//		result := &request.IcpResponse{Params: &request.QueryParams{}}
-//		err := i.post("icpAbbreviateInfo/queryByCondition", bytes.NewReader(queryRequest), "application/json;charset=UTF-8", i.token, result)
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		if !result.Success {
-//			return nil, fmt.Errorf("查询：%s", result.Msg)
-//		}
-//
-//		queryParams := result.Params.(*request.QueryParams)
-//		if len(queryParams.List) == 0 {
-//			return &request.DomainInfo{}, nil
-//		}
-//		return queryParams.List[0], nil
-//	}
 func (i *IcpClient) GetToken() error {
 	timestamp := time.Now().Unix()
 	data := []byte(fmt.Sprintf("testtest%d", timestamp))
@@ -106,6 +78,9 @@ func (i *IcpClient) GetToken() error {
 	}
 
 	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
 	defer resp.Body.Close()
 
 	var tokenRet TokenRet
@@ -128,10 +103,10 @@ type TokenRet struct {
 	Success bool `json:"success"`
 }
 
-func (i *IcpClient) ImageVerify() error {
+func (i *IcpClient) ImageVerify() (string, int, error) {
 	req, err := http.NewRequest(http.MethodPost, "https://hlwicpfwc.miit.gov.cn/icpproject_query/api/image/getCheckImage", nil)
 	if err != nil {
-		return err
+		return "", 0, err
 	}
 	//req.Header.Set("Content-Type", "application/json, text/plain, */*")
 	req.Header.Set("Origin", "https://beian.miit.gov.cn/")
@@ -144,11 +119,11 @@ func (i *IcpClient) ImageVerify() error {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return "", 0, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("获取token的请求出错了")
+		return "", 0, errors.New("获取token的请求出错了")
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -157,18 +132,26 @@ func (i *IcpClient) ImageVerify() error {
 	var imageRet ImageRet
 	err = json.Unmarshal(body, &imageRet)
 	if err != nil {
-		return err
+		return "", 0, err
 	}
 	if imageRet.Code != 200 {
-		return errors.New(imageRet.Msg)
-
+		return "", 0, errors.New(imageRet.Msg)
 	}
+	alpha, block, err := preProcess(imageRet.Params.SmallImage)
+	if err != nil {
+		return "", 0, errors.New(err.Error())
+	}
+	defer block.Close()
 
-	println(imageRet.Params.BigImage)
-	println(imageRet.Params.SmallImage)
-	println(imageRet.Params.Height)
-	println(imageRet.Params.Uuid)
-	return nil
+	_, bg, err := preProcess(imageRet.Params.BigImage)
+	if err != nil {
+		return "", 0, errors.New(err.Error())
+	}
+	defer bg.Close()
+
+	loc := Match(bg, block, alpha)
+
+	return imageRet.Params.Uuid, loc.X, nil
 
 }
 
@@ -201,57 +184,156 @@ type ImageRet struct {
 
 */
 
-//	func (i *Icp) post(url string, data io.Reader, contentType string, token string, result interface{}) error {
-//		postUrl := fmt.Sprintf("https://hlwicpfwc.miit.gov.cn/icpproject_query/api/%s", url)
-//		queryReq, err := http.NewRequest(http.MethodPost, postUrl, data)
-//		if err != nil {
-//			return err
-//		}
-//		queryReq.Header.Set("Content-Type", contentType)
-//		queryReq.Header.Set("Origin", "https://beian.miit.gov.cn/")
-//		queryReq.Header.Set("Referer", "https://beian.miit.gov.cn/")
-//		queryReq.Header.Set("token", token)
-//		queryReq.Header.Set("User-Agent", i.agent)
-//
-//		//client := DefaultProxyClient()
-//		client := http.DefaultClient
-//		resp, err := client.Do(queryReq)
-//
-//		return GetHTTPResponse(resp, postUrl, err, result)
-//	}
-//
-//	func (i *Icp) getUserAgent() {
-//		i.agent = RandAgent()
-//	}
-//
-//	func GetHTTPResponse(resp *http.Response, url string, err error, result interface{}) error {
-//		if err != nil {
-//			return err
-//		}
-//		body, err := GetHTTPResponseOrg(resp, url, err)
-//		if err == nil {
-//			err = json.Unmarshal(body, &result)
-//			if err != nil {
-//				return err
-//			}
-//		}
-//		return err
-//	}
-//
-// func GetHTTPResponseOrg(resp *http.Response, url string, err error) ([]byte, error) {
-//
-//		defer resp.Body.Close()
-//		body, err := ioutil.ReadAll(resp.Body)
-//		if err != nil {
-//			return nil, err
-//		}
-//		// 300及以上状态码都算异常
-//		if resp.StatusCode >= 300 {
-//			errMsg := fmt.Sprintf("请求接口 %s 失败! 返回状态码: %d\n", url, resp.StatusCode)
-//			err = fmt.Errorf(errMsg)
-//		}
-//		return body, err
-//	}
+func (i *IcpClient) GetSign(uuid string, distance int) (string, error) {
+	reqBody, err := json.Marshal(map[string]interface{}{"key": uuid, "value": distance})
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "https://hlwicpfwc.miit.gov.cn/icpproject_query/api/image/checkImage", bytes.NewReader(reqBody))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://beian.miit.gov.cn/")
+	req.Header.Set("Referer", "https://beian.miit.gov.cn/")
+	req.Header.Set("User-Agent", i.agent)
+	req.Header.Set("Cookie", fmt.Sprintf("__jsluid_s=%s", i.cookie))
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("token", i.token)
+	req.Header.Set("Content-Length", "60")
+
+	resp, err := i.core.Do(req)
+
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("获取滑动验证结果出错")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var imageCheckRet ImageCheckRet
+	err = json.Unmarshal(body, &imageCheckRet)
+	if err != nil {
+		return "", err
+	}
+	if !imageCheckRet.Success {
+		return "", errors.New(imageCheckRet.Msg)
+	}
+	i.sign = imageCheckRet.Params
+	return imageCheckRet.Params, nil
+}
+
+type ImageCheckRet struct {
+	Code    int    `json:"code"`
+	Msg     string `json:"msg"`
+	Params  string `json:"params"`
+	Success bool   `json:"success"`
+}
+
+type DomainInfoReq struct {
+	PageNum     int    `json:"pageNum"`
+	PageSize    int    `json:"pageSize"`
+	ServiceType int    `json:"serviceType"`
+	UnitName    string `json:"unitName"`
+}
+
+func (i *IcpClient) GetIcpInfo(unitName string) (*DomainInfoRet, error) {
+	reqParam := DomainInfoReq{
+		PageNum:     1,
+		PageSize:    40,
+		ServiceType: 1,
+		UnitName:    unitName,
+	}
+	reqBody, _ := json.Marshal(reqParam)
+
+	req, err := http.NewRequest(http.MethodPost, "https://hlwicpfwc.miit.gov.cn/icpproject_query/api/icpAbbreviateInfo/queryByCondition", bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://beian.miit.gov.cn/")
+	req.Header.Set("Referer", "https://beian.miit.gov.cn/")
+	req.Header.Set("User-Agent", i.agent)
+	req.Header.Set("Cookie", fmt.Sprintf("__jsluid_s=%s", i.cookie))
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+
+	req.Header.Set("token", i.token)
+	req.Header.Set("Content-Length", "78")
+	req.Header.Set("sign", i.sign)
+
+	resp, err := i.core.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("查询域名信息出错")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var domainInfo DomainInfoRet
+	err = json.Unmarshal(body, &domainInfo)
+	if err != nil {
+		return nil, err
+	}
+	if !domainInfo.Success {
+		return nil, errors.New(domainInfo.Msg)
+	}
+	return &domainInfo, nil
+}
+
+type DomainInfoRet struct {
+	Code   int    `json:"code"`
+	Msg    string `json:"msg"`
+	Params struct {
+		EndRow          int  `json:"endRow"`
+		FirstPage       int  `json:"firstPage"`
+		HasNextPage     bool `json:"hasNextPage"`
+		HasPreviousPage bool `json:"hasPreviousPage"`
+		IsFirstPage     bool `json:"isFirstPage"`
+		IsLastPage      bool `json:"isLastPage"`
+		LastPage        int  `json:"lastPage"`
+		List            []struct {
+			ContentTypeName  string `json:"contentTypeName"`
+			Domain           string `json:"domain"`
+			DomainId         int    `json:"domainId"`
+			LeaderName       string `json:"leaderName"`
+			LimitAccess      string `json:"limitAccess"`
+			MainId           int    `json:"mainId"`
+			MainLicence      string `json:"mainLicence"`
+			NatureName       string `json:"natureName"`
+			ServiceId        int    `json:"serviceId"`
+			ServiceLicence   string `json:"serviceLicence"`
+			UnitName         string `json:"unitName"`
+			UpdateRecordTime string `json:"updateRecordTime"`
+		} `json:"list"`
+		NavigatePages    int   `json:"navigatePages"`
+		NavigatepageNums []int `json:"navigatepageNums"`
+		NextPage         int   `json:"nextPage"`
+		PageNum          int   `json:"pageNum"`
+		PageSize         int   `json:"pageSize"`
+		Pages            int   `json:"pages"`
+		PrePage          int   `json:"prePage"`
+		Size             int   `json:"size"`
+		StartRow         int   `json:"startRow"`
+		Total            int   `json:"total"`
+	} `json:"params"`
+	Success bool `json:"success"`
+}
+
 func RandAgent() string {
 	agents := Agents()
 	rand.Seed(uint64(time.Now().UnixNano()))
@@ -289,56 +371,19 @@ func Agents() []string {
 	}
 }
 
-//
-//func (i *Icp) CheckStatusName(domain string) (*request.DomainInfo, error) {
-//	client := http.Client{}
-//	resp, err := client.Get(fmt.Sprintf("%s/n5fms8aktb/%s", global.GVA_CONFIG.Robot.IcpHost, domain))
-//	if err != nil {
-//		global.GVA_LOG.Error("请求服务期出错", zap.Error(err))
-//		return nil, err
-//	}
-//	defer resp.Body.Close()
-//	body, err := ioutil.ReadAll(resp.Body)
-//	if err != nil {
-//		global.GVA_LOG.Error("读取响应流出错", zap.Error(err))
-//
-//		return nil, err
-//	}
-//	var m DResult
-//	err = json.Unmarshal(body, &m)
-//	if err != nil {
-//		global.GVA_LOG.Error("解析出错", zap.Error(err))
-//		return nil, err
-//	}
-//	if resp.StatusCode != http.StatusOK {
-//		global.GVA_LOG.Error("解析出错", zap.Int("code", http.StatusOK))
-//		return nil, err
-//	}
-//	if m.Code == 0 && len(m.Info) > 0 {
-//		info := m.Info[0]
-//		return &info, nil
-//	} else {
-//		if m.Code == 0 {
-//			return &request.DomainInfo{}, nil
-//		} else {
-//			return nil, errors.New(m.Msg)
-//		}
-//	}
-//}
-//
-//type DResult struct {
-//	Msg  string               `json:"msg"`
-//	Info []request.DomainInfo `json:"info"`
-//	Code int                  `json:"code"`
-//}
-
 func decode(b64img string) []byte {
 	i := strings.IndexByte(b64img, ',')
 	if i == -1 {
-		return nil
+		b, err := base64.StdEncoding.DecodeString(b64img)
+		if err != nil {
+			fmt.Println(err, b64img[i+1:])
+			return nil
+		}
+		return b
 	}
 	b, err := base64.StdEncoding.DecodeString(b64img[i+1:])
 	if err != nil {
+		fmt.Println(err, b64img[i+1:])
 		return nil
 	}
 	return b
@@ -359,26 +404,13 @@ func preProcess(b64Image string) (alpha, processed gocv.Mat, err error) {
 	}
 	//defer origin.Close()
 
-	//resized := resize(origin, origin.Rows(), origin.Cols())
 	grayed := gray(origin)
-	//threshold := threshold(grayed)
-	//defer resized.Close()
-	//defer grayed.Close()
-	//defer threshold.Close()
-
-	//log.Debugf(origin.Cols(), origin.Rows(), resized.Cols(), resized.Rows())
 
 	if origin.Channels() == 4 {
 		return gocv.Split(origin)[3], grayed, nil
 	}
 
-	return gocv.Mat{}, grayed, nil
-}
-
-func resize(origin gocv.Mat, cols, rows int) gocv.Mat {
-	resized := gocv.NewMatWithSize(cols, rows, origin.Type())
-	gocv.Resize(origin, &resized, image.Pt(cols, rows), 0, 0, gocv.InterpolationNearestNeighbor)
-	return resized
+	return gocv.NewMat(), grayed, nil
 }
 
 func gray(origin gocv.Mat) gocv.Mat {
@@ -394,10 +426,16 @@ func Match(bg, block, mask gocv.Mat) image.Point {
 		gocv.MatTypeCV32FC1)
 	defer result.Close()
 
-	gocv.MatchTemplate(bg, block, &result, gocv.TmSqdiff, mask)
+	gocv.MatchTemplate(bg, block, &result, gocv.TmCcoeffNormed, mask)
 	gocv.Normalize(result, &result, 0, 1, gocv.NormMinMax)
-
 	_, _, _, maxLoc := gocv.MinMaxLoc(result)
-
 	return maxLoc
 }
+
+/*
+
+distance:71
+
+
+
+*/
