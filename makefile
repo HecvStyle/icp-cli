@@ -1,5 +1,5 @@
 USER=hecvstyle
-NAME=icp
+NAME=icp-cli
 VERSION=1.0.0
 REGISTRY=registry.cn-hangzhou.aliyuncs.com
 

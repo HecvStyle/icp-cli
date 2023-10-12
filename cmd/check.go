@@ -50,7 +50,6 @@ var checkCmd = &cobra.Command{
 		// 这里来解决输出文件的格式
 		for _, info := range infos {
 			fmt.Println(utils.Prettify(info))
-
 		}
 
 	},
@@ -62,9 +61,9 @@ func init() {
 	checkCmd.Flags().StringVarP(&unitName, "unitName", "u", "", "主域名，公司名，备案号")
 	_ = checkCmd.MarkFlagRequired("unitName")
 
-	checkCmd.Flags().StringVarP(&oYaml, "oyaml", "", "", "yaml 格式输出")
-	checkCmd.Flags().StringVarP(&oJson, "ojson", "", "", "json 格式输出")
-	checkCmd.Flags().StringVarP(&oCsv, "oCsv", "", "", "Csv 格式输出")
+	checkCmd.Flags().StringVarP(&oYaml, "oyaml", "", "", "指定文件名，以yaml格式输出")
+	checkCmd.Flags().StringVarP(&oJson, "ojson", "", "", "指定文件名，以json格式输出")
+	checkCmd.Flags().StringVarP(&oCsv, "oCsv", "", "", "指定文件名，以csv 格式输出")
 
 }
 

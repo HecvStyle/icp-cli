@@ -39,7 +39,7 @@ var rootCmd = &cobra.Command{
 	Use:              "icp",
 	TraverseChildren: true,
 	Short:            "用于备案信息查询",
-	Long:             `这是一个用于在 https://beian.miit.gov.cn/ 查询域名信息的工具`,
+	Long:             `这是一个用于在 https://beian.miit.gov.cn/ 查询域名信息的工具,支持域名，备案号，公司名查询`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
